@@ -1,0 +1,18 @@
+{
+    "private": true,
+    "name": "ci",
+    "workspaces": [
+        ".."
+    ],
+    "dependencies": {
+        "@rotcare/io": "git://github.com/rotcare/io.git",
+        "@rotcare/project": "git://github.com/rotcare/project.git"
+    },
+    "resolutions": {
+        "@rotcare/io": "git://github.com/rotcare/io.git",
+        "@rotcare/project": "git://github.com/rotcare/project.git"
+    },
+    "scripts": {
+        "postinstall": "cd .. && rm -rf node_modules && ln -s .ci/node_modules"
+    }
+}

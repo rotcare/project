@@ -71,8 +71,10 @@ export async function buildModel(options: { project: Project; qualifiedName: str
         staticProperties: [],
         methods: [],
         staticMethods: [],
+        decorators: {},
         code: '',
         isTsx: false,
+        tableName: '',
         qualifiedName
     }
     try {
@@ -91,7 +93,7 @@ async function tryBuild(options: { project: Project; qualifiedName: string, srcF
     const beforeStmts: babel.Statement[] = [];
     const classDecls: babel.ClassDeclaration[] = [];
     const afterStmts: babel.Statement[] = [];
-    const className = path.basename(qualifiedName);
+    const tableName = path.basename(qualifiedName);
     for (const [srcFilePath, srcFile] of srcFiles.entries()) {
         srcFile.content = (await readFile(srcFilePath)).toString();
         const ast = parse(srcFile.content, {
@@ -104,7 +106,7 @@ async function tryBuild(options: { project: Project; qualifiedName: string, srcF
             sourceType: 'module',
             sourceFilename: srcFilePath,
         });
-        extractStatements(className, ast, { imports, beforeStmts, afterStmts, classDecls });
+        extractStatements(tableName, ast, { imports, beforeStmts, afterStmts, classDecls });
     }
     const symbols = new Map<string, string>();
     const mergedStmts: babel.Statement[] = mergeImports({
@@ -122,11 +124,11 @@ async function tryBuild(options: { project: Project; qualifiedName: string, srcF
         }
     }
     if (classDecls.length > 0) {
+        model.tableName = tableName;
         if (babel.isIdentifier(classDecls[0].superClass)) {
             model.archetype = classDecls[0].superClass.name;
         }
         const mergedClassDecl = mergeClassDecls({
-            qualifiedName,
             classDecls,
             model,
         });
@@ -215,7 +217,7 @@ async function locateSrcFiles(packages: { name: string; path: string }[], qualif
 }
 
 function extractStatements(
-    className: string,
+    tableName: string,
     ast: babel.File,
     extractTo: {
         imports: babel.ImportDeclaration[];
@@ -231,7 +233,7 @@ function extractStatements(
         } else if (
             babel.isExportNamedDeclaration(stmt) &&
             babel.isClassDeclaration(stmt.declaration) &&
-            stmt.declaration.id.name === className
+            stmt.declaration.id.name === tableName
         ) {
             found = true;
             extractTo.classDecls.push(stmt.declaration);

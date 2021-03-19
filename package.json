@@ -21,10 +21,20 @@
     "devDependencies": {
         "@types/babel__generator": "^7.6.2",
         "@types/node": "^14.14.31",
-        "@types/convert-source-map": "^1.5.1"
+        "@types/convert-source-map": "^1.5.1",
+        "typescript": "*",
+        "mocha": "^8.3.1",
+        "@types/mocha": "^8.2.1"
+    },
+    "peerDependencies": {
+        "@rotcare/codegen": "*"
     },
     "bin": {
         "rotcare-build": "bin/rotcare-build.js",
         "rotcare-show": "bin/rotcare-show.js"
+    },
+    "scripts": {
+        "test": "TS_NODE_IGNORE=' ' yarn mocha -r ts-eager/register './src/**/*_test.ts'",
+        "ci": "tsc && yarn test"
     }
 }
