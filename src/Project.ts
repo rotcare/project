@@ -76,9 +76,7 @@ export class Project {
             const relPath = path.relative(this.projectDir, srcFile);
             const dotPos = relPath.indexOf('.');
             const qualifiedName = relPath.substr(0, dotPos);
-            if (qualifiedName.includes('/Private/') || qualifiedName.includes('/Public/')) {
-                qualifiedNames.add(qualifiedName);
-            }
+            qualifiedNames.add(qualifiedName);
         }
         return Array.from(qualifiedNames);
     }

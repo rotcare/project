@@ -41,6 +41,12 @@ export function expandCodegen(options: {
         }
         argNames.push(restElement.argument.name);
         argValues.push(Array.from(project.models.values()));
+        for (const dep of project.listQualifiedNames()) {
+            if (dep !== qualifiedName && !project.models.has(dep)) {
+                project.toBuild.add(dep);
+                isIncomplete = true;
+            }
+        }
     } else {
         for (const arg of arrowFuncAst.params) {
             if (!babel.isIdentifier(arg)) {
