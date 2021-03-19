@@ -1,7 +1,7 @@
 import * as path from 'path';
-import * as chokidar from 'chokidar';
 import * as fs from 'fs';
 import { Model } from '@rotcare/codegen';
+import * as chokidar from 'chokidar';
 
 export interface BuildingModel extends Model {
     code: string;
@@ -11,14 +11,15 @@ export interface BuildingModel extends Model {
 }
 
 export class Project {
-    public readonly packages: { path: string; name: string }[] = [];
     public readonly models = new Map<string, BuildingModel>();
     public readonly toBuild = new Set<string>();
     public readonly buildFailed = new Set<string>();
-    private readonly knownPackageNames = new Set<string>();
-    public readonly projectPackageName: string;
     public readonly projectDir: string;
     public subscribePath = (filePath: string): void => {};
+    public readonly projectPackageName: string;
+    // @internal
+    public readonly packages: { path: string; name: string }[] = [];
+    private readonly knownPackageNames = new Set<string>();
 
     constructor(relProjectDir: string) {
         relProjectDir = relProjectDir || '.';

@@ -5,11 +5,9 @@
         ".."
     ],
     "dependencies": {
-        "@rotcare/io": "git://github.com/rotcare/io.git",
         "@rotcare/codegen": "git://github.com/rotcare/codegen.git"
     },
     "resolutions": {
-        "@rotcare/io": "git://github.com/rotcare/io.git",
         "@rotcare/codegen": "git://github.com/rotcare/codegen.git"
     },
     "scripts": {
