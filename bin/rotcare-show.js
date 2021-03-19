@@ -9,7 +9,7 @@ const dotPos = qualifiedName.indexOf('.');
 qualifiedName = dotPos === -1 ? qualifiedName : qualifiedName.substr(0, dotPos);
 
 async function main() {
-    const [warnings, modelCodes] = await require('@rotcare/project').buildModels(process.cwd(), [qualifiedName]);
+    const [warnings, modelCodes] = await require('@rotcare/project').transpileModels(process.cwd(), [qualifiedName]);
     if (warnings) {
         for (const warning of warnings) {
             console.error(warning);

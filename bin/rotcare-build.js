@@ -14,7 +14,7 @@ const dotPos = qualifiedName.indexOf('.');
 qualifiedName = dotPos === -1 ? qualifiedName : qualifiedName.substr(0, dotPos);
 
 async function main() {
-    const [warnings, modelCodes] = await require('../index').buildModels(projectDir, [qualifiedName]);
+    const [warnings, modelCodes] = await require('../index').transpileModels(projectDir, [qualifiedName]);
     if (warnings) {
         for (const warning of warnings) {
             console.error(warning);
