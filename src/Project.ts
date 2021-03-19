@@ -13,7 +13,8 @@ export interface BuildingModel extends Model {
 export class Project {
     public readonly packages: { path: string; name: string }[] = [];
     public readonly models = new Map<string, BuildingModel>();
-    public readonly incompleteModels = new Set<string>();
+    public readonly toBuild = new Set<string>();
+    public readonly buildFailed = new Set<string>();
     private readonly knownPackageNames = new Set<string>();
     public readonly projectPackageName: string;
     public readonly projectDir: string;
@@ -50,6 +51,9 @@ export class Project {
         const watcher = new chokidar.FSWatcher();
         watcher.on('all', (eventName, filePath) => onChange(filePath));
         this.subscribePath = watcher.add.bind(watcher);
+        for (const pkg of this.packages) {
+            this.subscribePath(pkg.path);
+        }   
         onChange(undefined);
     }
 

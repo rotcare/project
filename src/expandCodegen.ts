@@ -73,7 +73,7 @@ export function expandCodegen(options: {
             const importQualifiedName = importedFrom.substr('@motherboard/'.length);
             const model = project.models.get(importQualifiedName);
             if (!model) {
-                project.incompleteModels.add(importQualifiedName);
+                project.toBuild.add(importQualifiedName);
                 isIncomplete = true;
             }
             argNames.push(arg.name);
@@ -81,7 +81,7 @@ export function expandCodegen(options: {
         }
     }
     if (isIncomplete) {
-        project.incompleteModels.add(qualifiedName);
+        project.toBuild.add(qualifiedName);
         return stmt;
     }
     try {

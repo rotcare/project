@@ -8,11 +8,11 @@ export async function buildModels(
 ): Promise<[esbuild.Message[] | undefined, Record<string, string>]> {
     const project = new Project(projectDir);
     for (const qualifiedName of toBuild) {
-        project.incompleteModels.add(qualifiedName);
+        project.toBuild.add(qualifiedName);
     }
     const qualifiedNames: string[] = [];
-    while (project.incompleteModels.size > 0) {
-        const toBuild = [...project.incompleteModels];
+    while (project.toBuild.size > 0) {
+        const toBuild = [...project.toBuild];
         for (const qualifiedName of toBuild) {
             if (!qualifiedNames.includes(qualifiedName)) {
                 qualifiedNames.push(qualifiedName);

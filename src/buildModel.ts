@@ -3,9 +3,7 @@ import * as fs from 'fs';
 import { parse } from '@babel/parser';
 import * as babel from '@babel/types';
 import generate from '@babel/generator';
-import { fromObject } from 'convert-source-map';
-import { Project } from './Project';
-import { ModelMethod, ModelProperty } from '@rotcare/codegen';
+import { BuildingModel, Project } from './Project';
 import * as esbuild from 'esbuild';
 import { mergeClassDecls } from './mergeClassDecls';
 import { expandCodegen } from './expandCodegen';
@@ -52,17 +50,43 @@ export function esbuildPlugin(options: { project: Project }): esbuild.Plugin {
 
 export async function buildModel(options: { project: Project; qualifiedName: string }) {
     const { project, qualifiedName } = options;
+    if (project.toBuild.has(qualifiedName)) {
+        project.toBuild.delete(qualifiedName);
+        project.models.delete(qualifiedName);
+    }
+    project.buildFailed.delete(qualifiedName);
     const { hash, srcFiles, resolveDir } = await locateSrcFiles(project.packages, qualifiedName);
     if (srcFiles.size === 0) {
+        project.buildFailed.add(qualifiedName);
         throw new Error(`referenced ${qualifiedName} not found`);
     }
     let model = project.models.get(qualifiedName);
     if (model && model.hash === hash) {
-        if (!project.incompleteModels.has(model.qualifiedName)) {
-            return model;
-        }
+        return model;
     }
-    project.incompleteModels.delete(qualifiedName);
+    model = {
+        hash,
+        resolveDir,
+        properties: [],
+        staticProperties: [],
+        methods: [],
+        staticMethods: [],
+        code: '',
+        isTsx: false,
+        qualifiedName
+    }
+    try {
+        model = await tryBuild({ project, qualifiedName, srcFiles, model });
+        project.models.set(qualifiedName, model);
+        return model;
+    } catch(e) {
+        project.buildFailed.add(qualifiedName);
+        throw e;
+    }
+}
+
+async function tryBuild(options: { project: Project; qualifiedName: string, srcFiles: Map<string, SrcFile>, model: BuildingModel }): Promise<BuildingModel> {
+    const { project, qualifiedName, srcFiles, model } = options;
     const imports: babel.ImportDeclaration[] = [];
     const beforeStmts: babel.Statement[] = [];
     const classDecls: babel.ClassDeclaration[] = [];
@@ -97,19 +121,14 @@ export async function buildModel(options: { project: Project; qualifiedName: str
             mergedStmts.push(stmt);
         }
     }
-    let archetype: string | undefined;
-    const properties: ModelProperty[] = [];
-    const staticProperties: ModelProperty[] = [];
-    const methods: ModelMethod[] = [];
-    const staticMethods: ModelMethod[] = [];
     if (classDecls.length > 0) {
         if (babel.isIdentifier(classDecls[0].superClass)) {
-            archetype = classDecls[0].superClass.name;
+            model.archetype = classDecls[0].superClass.name;
         }
         const mergedClassDecl = mergeClassDecls({
             qualifiedName,
             classDecls,
-            model: { properties, staticProperties, methods, staticMethods },
+            model,
         });
         mergedStmts.push(babel.exportNamedDeclaration(mergedClassDecl, []));
     }
@@ -127,28 +146,15 @@ export async function buildModel(options: { project: Project; qualifiedName: str
         throw new Error('missing map');
     }
     map.sourcesContent = [];
-    let isTsx = false;
     for (const [i, srcFilePath] of map.sources.entries()) {
         if (srcFilePath.endsWith('.tsx')) {
-            isTsx = true;
+            model.isTsx = true;
         }
         const srcFile = srcFiles.get(srcFilePath)!;
         map.sources[i] = `@motherboard/${srcFile.package}/${srcFile.fileName}`;
         map.sourcesContent.push(srcFile.content);
     }
-    model = {
-        qualifiedName,
-        code: `${code}\n${fromObject(map).toComment()}`,
-        hash,
-        isTsx,
-        resolveDir,
-        archetype,
-        properties,
-        staticProperties,
-        methods,
-        staticMethods,
-    };
-    project.models.set(qualifiedName, model);
+    model.code = code;
     return model;
 }
 
@@ -166,7 +172,7 @@ function mergeImports(options: {
         if (isRelativeImport) {
             const importQualifiedName = path.join(path.dirname(qualifiedName), stmt.source.value);
             if (!project.models.has(importQualifiedName)) {
-                project.incompleteModels.add(importQualifiedName);
+                project.toBuild.add(importQualifiedName);
             }
             stmt.source.value = `@motherboard/${importQualifiedName}`;
         }
