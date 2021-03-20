@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { Project } from './Project';
-import { mergeFiles, SrcFile } from './mergeFiles';
+import { Project, SrcFile } from './Project';
+import { mergeFiles } from './mergeFiles';
 
 export function buildModel(options: { project: Project; qualifiedName: string }) {
     const { project, qualifiedName } = options;

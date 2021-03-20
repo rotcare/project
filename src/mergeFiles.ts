@@ -3,16 +3,10 @@ import * as fs from 'fs';
 import { parse } from '@babel/parser';
 import * as babel from '@babel/types';
 import generate from '@babel/generator';
-import { BuildingModel, Project } from './Project';
+import { BuildingModel, Project, SrcFile } from './Project';
 import { mergeClassDecls } from './mergeClassDecls';
 import { expandCodegen } from './expandCodegen';
 import { fromObject } from 'convert-source-map';
-
-export interface SrcFile {
-    package: string;
-    fileName: string;
-    content: string;
-}
 
 export function mergeFiles(options: { project: Project; srcFiles: Map<string, SrcFile>, model: BuildingModel }) {
     const { project, srcFiles, model } = options;
@@ -70,21 +64,31 @@ export function mergeFiles(options: { project: Project; srcFiles: Map<string, Sr
         }
     }
     const merged = babel.file(babel.program(mergedStmts, undefined, 'module'));
+    if (project.transform) {
+        model.code = project.transform(merged, srcFiles);
+    } else {
+        model.code = transform(merged, srcFiles);
+    }
+    for (const srcFile of srcFiles.values()) {
+        if (srcFile.fileName.endsWith('.tsx')) {
+            model.isTsx = true;
+        }
+    }
+    return model;
+}
+
+function transform(merged: babel.File, srcFiles: Map<string, SrcFile>) {
     const { code, map } = generate(merged, { sourceMaps: true }, {});
     if (!map) {
         throw new Error('missing map');
     }
     map.sourcesContent = [];
     for (const [i, srcFilePath] of map.sources.entries()) {
-        if (srcFilePath.endsWith('.tsx')) {
-            model.isTsx = true;
-        }
         const srcFile = srcFiles.get(srcFilePath)!;
         map.sources[i] = `@motherboard/${srcFile.package}/${srcFile.fileName}`;
         map.sourcesContent.push(srcFile.content);
     }
-    model.code = `${code}\n${fromObject(map).toComment()}`;
-    return model;
+    return `${code}\n${fromObject(map).toComment()}`;
 }
 
 function mergeImports(options: {

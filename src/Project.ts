@@ -2,6 +2,13 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { Model } from '@rotcare/codegen';
 import * as chokidar from 'chokidar';
+import * as babel from '@babel/types';
+
+export interface SrcFile {
+    package: string;
+    fileName: string;
+    content: string;
+}
 
 export interface BuildingModel extends Model {
     code: string;
@@ -17,6 +24,7 @@ export class Project {
     public readonly projectDir: string;
     public subscribePath = (filePath: string): void => {};
     public readonly projectPackageName: string;
+    public transform?: (ast: babel.File, srcFiles: Map<string, SrcFile>) => string
     // @internal
     public readonly packages: { path: string; name: string }[] = [];
     private readonly knownPackageNames = new Set<string>();
