@@ -1,8 +1,8 @@
 import { Model } from '@rotcare/codegen';
-import { mergeClassDecls } from './mergeClassDecls';
 import { parse } from '@babel/parser';
 import * as babel from '@babel/types';
 import { strict } from 'assert';
+import { readModel } from './buildModel';
 
 describe('mergeClassDecls', () => {
     it('bare decorator', () => {
@@ -44,15 +44,6 @@ describe('mergeClassDecls', () => {
 });
 
 function parseModel(code: string) {
-    const model: Model = {
-        properties: [],
-        staticProperties: [],
-        methods: [],
-        staticMethods: [],
-        decorators: {},
-        tableName: '',
-        qualifiedName: '',
-    };
     const result = parse(code, {
         plugins: [
             'typescript',
@@ -61,6 +52,16 @@ function parseModel(code: string) {
             ['decorators', { decoratorsBeforeExport: true }],
         ],
     });
-    mergeClassDecls({ classDecls: [result.program.body[0] as babel.ClassDeclaration], model });
+    const model: Model = {
+        cacheHash: 1,
+        qualifiedName: '',
+        tableName: '',
+        decorators: {},
+        properties: [],
+        staticProperties: [],
+        methods: [],
+        staticMethods: []
+    };
+    readModel(result.program.body[0] as babel.ClassDeclaration, model);
     return model;
 }

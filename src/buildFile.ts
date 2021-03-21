@@ -1,23 +1,39 @@
 import * as path from 'path';
-import * as fs from 'fs';
 import { parse } from '@babel/parser';
 import * as babel from '@babel/types';
 import generate from '@babel/generator';
-import { BuildingModel, Project, SrcFile } from './Project';
+import { Project } from './Project';
 import { mergeClassDecls } from './mergeClassDecls';
 import { expandCodegen } from './expandCodegen';
 import { fromObject } from 'convert-source-map';
+import { locateSrcFiles } from './locateSrcFiles';
 
-export function mergeFiles(options: { project: Project; srcFiles: Map<string, SrcFile>, model: BuildingModel }) {
-    const { project, srcFiles, model } = options;
+export function buildFile(project: Project, qualifiedName: string) {
+    const { cacheHash, srcFiles, isTsx, resolveDir } = locateSrcFiles(project, qualifiedName);
+    if (Object.keys(srcFiles).length === 0) {
+        throw new Error(`referenced ${qualifiedName} not found`);
+    }
+    let projectFile = project.files.get(qualifiedName);
+    if (projectFile && projectFile.cacheHash === cacheHash) {
+        return projectFile;
+    }
+    projectFile = {
+        cacheHash,
+        isTsx,
+        resolveDir,
+        code: buildFileCode(project, qualifiedName, srcFiles)
+    }
+    return projectFile;
+}
+
+export function buildFileCode(project: Project, qualifiedName: string, srcFiles: Record<string, string>) {
     const imports: babel.ImportDeclaration[] = [];
     const beforeStmts: babel.Statement[] = [];
     const classDecls: babel.ClassDeclaration[] = [];
     const afterStmts: babel.Statement[] = [];
-    const tableName = path.basename(model.qualifiedName);
-    for (const [srcFilePath, srcFile] of srcFiles.entries()) {
-        srcFile.content = srcFile.content || fs.readFileSync(srcFilePath).toString();
-        const ast = parse(srcFile.content, {
+    const tableName = path.basename(qualifiedName);
+    for (const [srcFilePath, srcFile] of Object.entries(srcFiles)) {
+        const ast = parse(srcFile, {
             plugins: [
                 'typescript',
                 'jsx',
@@ -31,33 +47,26 @@ export function mergeFiles(options: { project: Project; srcFiles: Map<string, Sr
     }
     const symbols = new Map<string, string>();
     const mergedStmts: babel.Statement[] = mergeImports({
-        qualifiedName: model.qualifiedName,
+        qualifiedName,
         imports,
         symbols,
         project,
     });
     for (const stmt of beforeStmts) {
         try {
-            mergedStmts.push(expandCodegen({ project, stmt, imports, symbols, qualifiedName: model.qualifiedName }));
+            mergedStmts.push(expandCodegen({ project, stmt, imports, symbols, qualifiedName }));
         } catch (e) {
             console.error(`failed to generate code: ${(stmt.loc as any).filename}`, e);
             mergedStmts.push(stmt);
         }
     }
     if (classDecls.length > 0) {
-        model.tableName = tableName;
-        if (babel.isIdentifier(classDecls[0].superClass)) {
-            model.archetype = classDecls[0].superClass.name;
-        }
-        const mergedClassDecl = mergeClassDecls({
-            classDecls,
-            model,
-        });
+        const mergedClassDecl = mergeClassDecls(classDecls);
         mergedStmts.push(babel.exportNamedDeclaration(mergedClassDecl, []));
     }
     for (const stmt of afterStmts) {
         try {
-            mergedStmts.push(expandCodegen({ project, stmt, imports, symbols, qualifiedName: model.qualifiedName }));
+            mergedStmts.push(expandCodegen({ project, stmt, imports, symbols, qualifiedName }));
         } catch (e) {
             console.error(`failed to generate code: ${(stmt.loc as any).filename}`, e);
             mergedStmts.push(stmt);
@@ -65,29 +74,14 @@ export function mergeFiles(options: { project: Project; srcFiles: Map<string, Sr
     }
     const merged = babel.file(babel.program(mergedStmts, undefined, 'module'));
     if (project.transform) {
-        model.code = project.transform(merged, srcFiles);
+        return project.transform(merged, srcFiles);
     } else {
-        model.code = transform(merged, srcFiles);
+        return transform(merged, srcFiles);
     }
-    for (const srcFile of srcFiles.values()) {
-        if (srcFile.fileName.endsWith('.tsx')) {
-            model.isTsx = true;
-        }
-    }
-    return model;
 }
 
-function transform(merged: babel.File, srcFiles: Map<string, SrcFile>) {
+function transform(merged: babel.File, srcFiles: Record<string, string>) {
     const { code, map } = generate(merged, { sourceMaps: true }, {});
-    if (!map) {
-        throw new Error('missing map');
-    }
-    map.sourcesContent = [];
-    for (const [i, srcFilePath] of map.sources.entries()) {
-        const srcFile = srcFiles.get(srcFilePath)!;
-        map.sources[i] = `@motherboard/${srcFile.package}/${srcFile.fileName}`;
-        map.sourcesContent.push(srcFile.content);
-    }
     return `${code}\n${fromObject(map).toComment()}`;
 }
 
@@ -97,16 +91,13 @@ function mergeImports(options: {
     imports: babel.ImportDeclaration[];
     symbols: Map<string, string>;
 }) {
-    const { project, qualifiedName, imports, symbols } = options;
+    const { qualifiedName, imports, symbols } = options;
     const merged: babel.ImportDeclaration[] = [];
     for (const stmt of imports) {
         // 通过替换了 import 路径，使得被 import 的文件仍然会交给这个插件来处理
         const isRelativeImport = stmt.source.value[0] === '.';
         if (isRelativeImport) {
             const importQualifiedName = path.join(path.dirname(qualifiedName), stmt.source.value);
-            if (!project.models.has(importQualifiedName)) {
-                project.toBuild.add(importQualifiedName);
-            }
             stmt.source.value = `@motherboard/${importQualifiedName}`;
         }
         const specifiers = [];

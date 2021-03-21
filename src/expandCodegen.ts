@@ -2,6 +2,7 @@ import * as babel from '@babel/types';
 import generate from '@babel/generator';
 import { parse } from '@babel/parser';
 import { Project } from './Project';
+import { buildModel } from './buildModel';
 
 export function expandCodegen(options: {
     stmt: babel.Statement;
@@ -33,20 +34,20 @@ export function expandCodegen(options: {
     }
     const argNames = [];
     const argValues = [];
-    let isIncomplete = false;
     if (babel.isRestElement(arrowFuncAst.params[0])) {
         const restElement = arrowFuncAst.params[0];
         if (!babel.isIdentifier(restElement.argument)) {
             throw new Error('expect identifier');
         }
         argNames.push(restElement.argument.name);
-        argValues.push(Array.from(project.models.values()));
+        const models = [];
         for (const dep of project.listQualifiedNames()) {
-            if (dep !== qualifiedName && !project.models.has(dep)) {
-                project.toBuild.add(dep);
-                isIncomplete = true;
+            const model = buildModel(project, dep);
+            if (model) {
+                models.push(model)
             }
         }
+        argValues.push(models);
     } else {
         for (const arg of arrowFuncAst.params) {
             if (!babel.isIdentifier(arg)) {
@@ -77,18 +78,9 @@ export function expandCodegen(options: {
                 throw new Error(`Model<T> must reference model class as T`);
             }
             const importQualifiedName = importedFrom.substr('@motherboard/'.length);
-            const model = project.models.get(importQualifiedName);
-            if (!model) {
-                project.toBuild.add(importQualifiedName);
-                isIncomplete = true;
-            }
             argNames.push(arg.name);
-            argValues.push(model);
+            argValues.push(buildModel(project, importQualifiedName));
         }
-    }
-    if (isIncomplete) {
-        project.toBuild.add(qualifiedName);
-        return stmt;
     }
     try {
         global.require = require;

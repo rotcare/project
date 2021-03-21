@@ -4,27 +4,23 @@ import { Model } from '@rotcare/codegen';
 import * as chokidar from 'chokidar';
 import * as babel from '@babel/types';
 
-export interface SrcFile {
-    package: string;
-    fileName: string;
-    content: string;
-}
-
-export interface BuildingModel extends Model {
+export interface ProjectFile {
+    cacheHash: number;
     code: string;
-    hash: number;
     isTsx: boolean;
     resolveDir: string;
 }
 
 export class Project {
-    public readonly models = new Map<string, BuildingModel>();
-    public readonly toBuild = new Set<string>();
-    public readonly buildFailed = new Set<string>();
     public readonly projectDir: string;
     public subscribePath = (filePath: string): void => {};
     public readonly projectPackageName: string;
-    public transform?: (ast: babel.File, srcFiles: Map<string, SrcFile>) => string
+    public transform?: (ast: babel.File, srcFiles: Record<string, string>) => string
+    // 只有当项目文件包含一个和文件名同名的 class 的时候，这个文件才有一个 Model
+    // @internal
+    public readonly models = new Map<string, Model | null>();
+    // @internal
+    public readonly files = new Map<string, ProjectFile>();
     // @internal
     public readonly packages: { path: string; name: string }[] = [];
     private readonly knownPackageNames = new Set<string>();
@@ -36,7 +32,7 @@ export class Project {
         try {
             packageJson = require(`${this.projectDir}/package.json`);
         } catch (e) {
-            throw e;
+            throw `@rotcare/project requires valid package.json present in directory ${this.projectDir}: ${e}`;
         }
         this.projectPackageName = packageJson.name;
         const projectType = packageJson.rotcare?.project || 'solo';
