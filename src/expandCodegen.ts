@@ -3,6 +3,7 @@ import generate from '@babel/generator';
 import { parse } from '@babel/parser';
 import { Project } from './Project';
 import { buildModel } from './buildModel';
+import * as babelCore from '@babel/core';
 
 export function expandCodegen(options: {
     stmt: babel.Statement;
@@ -85,10 +86,18 @@ export function expandCodegen(options: {
     try {
         global.require = require;
     } catch (e) {}
-    let code = generate(arrowFuncAst.body).code;
-    code = `${translateImportToRequire(imports)}\n${code}`;
-    const arrowFunc = new Function(...argNames, code);
-    const generatedCode = arrowFunc.apply(undefined, argValues);
+    const generatorAst = babel.program([...imports, ...(arrowFuncAst.body as babel.BlockStatement).body])
+    const generatorCode = transformToCjs(generatorAst);
+    let generatedCode: string;
+    try {
+        const arrowFunc = new Function(...argNames, generatorCode);
+        generatedCode = arrowFunc.apply(undefined, argValues);
+    } catch(e) {
+        console.error('\n>>> GENERATOR');
+        console.error(generatorCode);
+        console.error('<<< GENERATOR\n');
+        throw e;
+    }
     const exportAs = (decl.declarations[0].id as babel.Identifier).name;
     try {
         const generatedAst = parse(`export const ${exportAs} = (() => {${generatedCode}})()`, {
@@ -110,23 +119,15 @@ export function expandCodegen(options: {
     }
 }
 
-function translateImportToRequire(imports: babel.ImportDeclaration[]) {
-    const lines = [];
-    for (const stmt of imports) {
-        if (stmt.source.value.startsWith('@motherboard/')) {
-            continue;
-        }
-        for (const specifier of stmt.specifiers) {
-            if (babel.isImportDefaultSpecifier(specifier)) {
-                lines.push(
-                    `const ${specifier.local.name} = require('${stmt.source.value}').default;`,
-                );
-            } else if (babel.isImportNamespaceSpecifier(specifier)) {
-                lines.push(`const ${specifier.local.name} = require('${stmt.source.value}');`);
-            } else {
-                lines.push(`const { ${specifier.local.name} } = require('${stmt.source.value}');`);
-            }
-        }
+export function transformToCjs(ast: babel.Program) {
+    const result = babelCore.transformFromAstSync(ast, undefined, {
+        plugins: [
+            '@babel/plugin-transform-typescript',
+            '@babel/plugin-transform-modules-commonjs',
+        ],
+    });
+    if (!result || !result.code) {
+        throw new Error('transform typescript failed');
     }
-    return lines.join('\n');
+    return result.code;
 }

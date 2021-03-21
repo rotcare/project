@@ -25,6 +25,10 @@ export function mergeClassDecls(classDecls: babel.ClassDeclaration[]): babel.Cla
             others.push(member);
         }
     }
+    for (const method of methods.values()) {
+        method.leadingComments = [];
+        method.trailingComments = [];
+    }
     return {
         ...classDecls[0],
         body: { ...classDecls[0].body, body: [...others, ...methods.values()] },

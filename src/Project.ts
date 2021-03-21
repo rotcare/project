@@ -76,11 +76,13 @@ export class Project {
 
     public listQualifiedNames(): string[] {
         const qualifiedNames = new Set<string>();
-        for (const srcFile of walk(this.projectDir)) {
-            const relPath = path.relative(this.projectDir, srcFile);
-            const dotPos = relPath.indexOf('.');
-            const qualifiedName = relPath.substr(0, dotPos);
-            qualifiedNames.add(qualifiedName);
+        for (const pkg of this.packages) {
+            for (const srcFile of walk(pkg.path)) {
+                const relPath = path.relative(pkg.path, srcFile);
+                const dotPos = relPath.indexOf('.');
+                const qualifiedName = relPath.substr(0, dotPos);
+                qualifiedNames.add(qualifiedName);
+            }
         }
         return Array.from(qualifiedNames);
     }
