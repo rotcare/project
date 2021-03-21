@@ -36,19 +36,18 @@ export class Project {
         }
         this.projectPackageName = packageJson.name;
         const projectType = packageJson.rotcare?.project || 'solo';
+        this.packages.push({ path: this.projectDir, name: this.projectPackageName });
         if (projectType === 'composite') {
-            for (const pkg of Object.keys(packageJson.dependencies)) {
+            for (const pkg of Object.keys(packageJson.peerDependencies || {})) {
                 try {
                     this.packages.push({
                         path: path.dirname(require.resolve(`${pkg}/package.json`)),
                         name: pkg,
                     });
-                } catch (e) {
+                } catch(e) {
                     throw e;
                 }
             }
-        } else {
-            this.packages.push({ path: this.projectDir, name: this.projectPackageName });
         }
     }
 

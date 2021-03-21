@@ -10,9 +10,6 @@ import { locateSrcFiles } from './locateSrcFiles';
 
 export function buildFile(project: Project, qualifiedName: string) {
     const { cacheHash, srcFiles, isTsx, resolveDir } = locateSrcFiles(project, qualifiedName);
-    if (Object.keys(srcFiles).length === 0) {
-        throw new Error(`referenced ${qualifiedName} not found`);
-    }
     let projectFile = project.files.get(qualifiedName);
     if (projectFile && projectFile.cacheHash === cacheHash) {
         return projectFile;

@@ -9,9 +9,6 @@ import generate from '@babel/generator';
 
 export function buildModel(project: Project, qualifiedName: string) {
     const { cacheHash, srcFiles } = locateSrcFiles(project, qualifiedName);
-    if (Object.keys(srcFiles).length === 0) {
-        throw new Error(`referenced ${qualifiedName} not found`);
-    }
     let model = project.models.get(qualifiedName);
     if (model === null) {
         return null;
