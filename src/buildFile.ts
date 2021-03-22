@@ -78,7 +78,7 @@ export function buildFileCode(project: Project, qualifiedName: string, srcFiles:
 }
 
 function transform(merged: babel.File, srcFiles: Record<string, string>) {
-    const { code, map } = generate(merged, { sourceMaps: true }, {});
+    const { code, map } = generate(merged, { sourceMaps: true }, srcFiles);
     return `${code}\n${fromObject(map).toComment()}`;
 }
 

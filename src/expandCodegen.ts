@@ -1,5 +1,4 @@
 import * as babel from '@babel/types';
-import generate from '@babel/generator';
 import { parse } from '@babel/parser';
 import { Project } from './Project';
 import { buildModel } from './buildModel';
@@ -119,7 +118,7 @@ export function expandCodegen(options: {
     }
 }
 
-export function transformToCjs(ast: babel.Program) {
+function transformToCjs(ast: babel.Program) {
     const result = babelCore.transformFromAstSync(ast, undefined, {
         plugins: [
             '@babel/plugin-transform-typescript',

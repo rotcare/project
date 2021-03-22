@@ -38,7 +38,7 @@ export class Project {
         const projectType = packageJson.rotcare?.project || 'solo';
         this.packages.push({ path: this.projectDir, name: this.projectPackageName });
         if (projectType === 'composite') {
-            for (const pkg of Object.keys(packageJson.peerDependencies || {})) {
+            for (const pkg of Object.keys(packageJson.dependencies || {})) {
                 try {
                     this.packages.push({
                         path: path.dirname(require.resolve(`${pkg}/package.json`)),
