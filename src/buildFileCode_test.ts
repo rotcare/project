@@ -1,5 +1,5 @@
 import { strict } from 'assert';
-import { buildFileCode } from './buildFile';
+import { buildFileCode } from './buildFileCode';
 
 describe('buildFile', () => {
     it('duplicated import', () => {

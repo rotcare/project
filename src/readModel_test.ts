@@ -2,9 +2,9 @@ import { Model } from '@rotcare/codegen';
 import { parse } from '@babel/parser';
 import * as babel from '@babel/types';
 import { strict } from 'assert';
-import { readModel } from './buildModel';
+import { readModel } from './readModel';
 
-describe('mergeClassDecls', () => {
+describe('readModel', () => {
     it('bare decorator', () => {
         const model = parseModel(`@mysql class Product {}`);
         strict.ok(model.decorators.mysql);
