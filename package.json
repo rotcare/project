@@ -5,6 +5,7 @@
         "type": "git",
         "url": "https://github.com/rotcare/project.git"
     },
+    "homepage": "https://rot.care/codegen/",
     "main": "src/index.ts",
     "dependencies": {
         "@babel/core": "^7.13.9",
