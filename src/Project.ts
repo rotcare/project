@@ -56,6 +56,10 @@ export class Project {
         }
     }
 
+    /**
+     * @internal
+     * @param onChange 
+     */
     public startWatcher(onChange: (filePath?: string) => void) {
         const watcher = new chokidar.FSWatcher();
         watcher.on('all', (eventName, filePath) => onChange(filePath));
@@ -66,7 +70,11 @@ export class Project {
         onChange(undefined);
     }
 
-    public subscribePackage(packageName: string) {
+    /**
+     * 在 watch 的时候，追加需要订阅的包
+     * @param packageName 要订阅的 npm 包名
+     */
+    public subscribePackage(packageName: string): void {
         if (this.knownPackageNames.has(packageName)) {
             return;
         }
@@ -79,6 +87,10 @@ export class Project {
         }
     }
 
+    /**
+     * @internal
+     * @returns 
+     */
     public listQualifiedNames(): string[] {
         const qualifiedNames = new Set<string>();
         for (const pkg of this.packages) {
