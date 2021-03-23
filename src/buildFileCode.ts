@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { parse } from '@babel/parser';
 import * as babel from '@babel/types';
-import generate from '@babel/generator';
+import * as babelCore from '@babel/core';
 import { Project } from './Project';
 import { mergeClassDecls } from './mergeClassDecls';
 import { expandCodegen } from './expandCodegen';
@@ -35,7 +35,7 @@ export function buildFileCode(project: Project, qualifiedName: string, srcFiles:
     });
     for (const stmt of beforeStmts) {
         try {
-            mergedStmts.push(expandCodegen({ project, stmt, imports, symbols, qualifiedName }));
+            mergedStmts.push(expandCodegen({ project, stmt, imports, symbols }));
         } catch (e) {
             console.error(`failed to generate code: ${(stmt.loc as any).filename}`, e);
             mergedStmts.push(stmt);
@@ -47,23 +47,30 @@ export function buildFileCode(project: Project, qualifiedName: string, srcFiles:
     }
     for (const stmt of afterStmts) {
         try {
-            mergedStmts.push(expandCodegen({ project, stmt, imports, symbols, qualifiedName }));
+            mergedStmts.push(expandCodegen({ project, stmt, imports, symbols }));
         } catch (e) {
             console.error(`failed to generate code: ${(stmt.loc as any).filename}`, e);
             mergedStmts.push(stmt);
         }
     }
     const merged = babel.file(babel.program(mergedStmts, undefined, 'module'));
-    if (project.transform) {
-        return project.transform(merged, srcFiles);
-    } else {
-        return transform(merged, srcFiles);
+    const result = babelCore.transformFromAstSync(merged, undefined, {
+        sourceMaps: true,
+        plugins: [
+            '@babel/plugin-transform-typescript',
+            '@babel/plugin-transform-modules-commonjs',
+            '@babel/plugin-transform-react-jsx',
+        ],
+    });
+    if (!result || !result.code || !result.map) {
+        throw new Error('transform typescript failed');
     }
-}
-
-function transform(merged: babel.File, srcFiles: Record<string, string>) {
-    const { code, map } = generate(merged, { sourceMaps: true }, srcFiles);
-    return `${code}\n${fromObject(map).toComment()}`;
+    result.map.sourcesContent = [];
+    result.map.sourcesContent.length = result.map.sources.length;
+    for (const [i, srcFilePath] of result.map.sources.entries()) {
+        result.map.sourcesContent[i] = srcFiles[srcFilePath];
+    }
+    return `${result.code}\n${fromObject(result.map).toComment()}`;
 }
 
 function mergeImports(options: {

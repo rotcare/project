@@ -3,9 +3,9 @@ import { Project } from "./Project";
 /**
  * 监控本地磁盘文件，持续出发重新构建
  * @param project 要构建的项目
- * @param build 每次项目文件被修改了，该回调会被调用
+ * @param builds 每次项目文件被修改了，该回调会被调用
  */
-export async function watch(project: Project, builds: Array<(project: Project) => Promise<void>>) {
+export function watch(project: Project, builds: Array<(project: Project) => Promise<void>>): void {
     let deploying: Promise<any> | undefined;
     let changedFiles: string[] = [];
 

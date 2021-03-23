@@ -5,8 +5,6 @@ import * as fs from 'fs';
 export function locateSrcFiles(project: Project, qualifiedName: string) {
     const srcFiles: Record<string, string> = {};
     let cacheHash = 0;
-    let resolveDir = '';
-    let isTsx = false;
     const searchedPaths = [];
     for (const pkg of project.packages) {
         for (const ext of ['.ts', '.tsx', '.impl.ts', '.impl.tsx']) {
@@ -17,12 +15,6 @@ export function locateSrcFiles(project: Project, qualifiedName: string) {
                 const stat = fs.lstatSync(filePath);
                 cacheHash += stat.mtimeMs;
                 srcFiles[filePath] = fs.readFileSync(filePath).toString();
-                if (!resolveDir) {
-                    resolveDir = pkg.path;
-                }
-                if (ext === '.tsx' || ext === '.impl.tsx') {
-                    isTsx = true;
-                }
             } catch (e) {
                 cacheHash += 1;
             }
@@ -31,5 +23,5 @@ export function locateSrcFiles(project: Project, qualifiedName: string) {
     if (Object.keys(srcFiles).length === 0) {
         throw new Error(`referenced ${qualifiedName} not found in ${searchedPaths}`);
     }
-    return { cacheHash, srcFiles, resolveDir, isTsx };
+    return { cacheHash, srcFiles };
 }

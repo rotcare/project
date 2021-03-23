@@ -9,9 +9,8 @@ export function expandCodegen(options: {
     imports: babel.ImportDeclaration[];
     symbols: Map<string, string>;
     project: Project,
-    qualifiedName: string
 }) {
-    const { project, qualifiedName, stmt, imports, symbols } = options;
+    const { project, stmt, imports, symbols } = options;
     let decl: babel.VariableDeclaration;
     if (babel.isExportNamedDeclaration(stmt) && babel.isVariableDeclaration(stmt.declaration)) {
         decl = stmt.declaration;
@@ -85,8 +84,7 @@ export function expandCodegen(options: {
     try {
         global.require = require;
     } catch (e) {}
-    const generatorAst = babel.program([...imports, ...(arrowFuncAst.body as babel.BlockStatement).body])
-    const generatorCode = transformToCjs(generatorAst);
+    const generatorCode = transformToCjs(babel.program([...imports, arrowFuncAst.body as babel.Statement], undefined, 'module'));
     let generatedCode: string;
     try {
         const arrowFunc = new Function(...argNames, generatorCode);
@@ -118,8 +116,8 @@ export function expandCodegen(options: {
     }
 }
 
-function transformToCjs(ast: babel.Program) {
-    const result = babelCore.transformFromAstSync(ast, undefined, {
+function transformToCjs(program: babel.Program) {
+    const result = babelCore.transformFromAstSync(program, undefined, {
         plugins: [
             '@babel/plugin-transform-typescript',
             '@babel/plugin-transform-modules-commonjs',

@@ -2,20 +2,25 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { Model } from '@rotcare/codegen';
 import * as chokidar from 'chokidar';
-import * as babel from '@babel/types';
+import type { ProjectFile } from './ProjectFile';
 
-export interface ProjectFile {
-    cacheHash: number;
-    code: string;
-    isTsx: boolean;
-    resolveDir: string;
-}
-
+/**
+ * 代表了一个 TypeScript 项目。如果项目类型是 composite 则可能跨了多个 NPM 包，多个 Git 仓库。
+ */
 export class Project {
+    /**
+     * 项目的绝对路径
+     */
     public readonly projectDir: string;
+    /**
+     * 在用 watch 构建的时候，通知 watch 要追加的订阅文件
+     * @param filePath 要订阅的文件路径
+     */
     public subscribePath = (filePath: string): void => {};
+    /**
+     * 项目的 npm 包名
+     */
     public readonly projectPackageName: string;
-    public transform?: (ast: babel.File, srcFiles: Record<string, string>) => string
     // 只有当项目文件包含一个和文件名同名的 class 的时候，这个文件才有一个 Model
     // @internal
     public readonly models = new Map<string, Model | null>();
