@@ -1,4 +1,4 @@
-import { Project } from '@rotcare/project';
+import { Project } from "./Project";
 
 /**
  * 监控本地磁盘文件，持续出发重新构建
